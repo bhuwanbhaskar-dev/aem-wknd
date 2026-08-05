@@ -309,8 +309,9 @@ public class CrossBoundaryReporter extends ProcessDefinition {
         // ProcessInstance might not have getReport() in some ACS Commons versions, 
         // we can cast or just rely on GenericReport mechanism if available.
         // If not available, we can just skip or write a node.
-        // For compatibility with 6.3.0, we will omit the report generation in the instance itself
-        // and just log if getReport doesn't exist.
+        // For compatibility with 6.3.0, we log the generated report data and columns.
+        log.debug("Report columns defined: {}", columns.keySet());
+        log.debug("Generated report data with {} items: {}", reportData.size(), reportData);
     }
     
     public enum ReportColumns {

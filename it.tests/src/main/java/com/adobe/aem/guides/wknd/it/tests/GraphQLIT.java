@@ -180,8 +180,10 @@ public class GraphQLIT {
         Optional<PersistedQuery> queryOptional = listPersistedQueries.stream()
                 .filter(p -> p.getShortPath().equals("/wknd-shared/adventures-all")).findFirst();
         assertTrue(queryOptional.isPresent());
-        PersistedQuery adventuresQuery = queryOptional.get();
-        assertEquals("/wknd-shared/settings/graphql/persistentQueries/adventures-all", adventuresQuery.getLongPath());
-        assertThat(adventuresQuery.getQuery(), containsString("adventureList"));
+        if (queryOptional.isPresent()) {
+            PersistedQuery adventuresQuery = queryOptional.get();
+            assertEquals("/wknd-shared/settings/graphql/persistentQueries/adventures-all", adventuresQuery.getLongPath());
+            assertThat(adventuresQuery.getQuery(), containsString("adventureList"));
+        }
     }
 }
