@@ -1,0 +1,6 @@
+{
+  "resource.resolver.mapping": [
+    "/:/",
+    "^/content/wknd/(.*)</$1"
+  ]
+}
