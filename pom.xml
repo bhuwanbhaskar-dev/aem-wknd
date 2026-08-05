@@ -59,14 +59,14 @@
         <bnd.version>6.4.0</bnd.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <aem.sdk.api>2025.6.21193.20250609T124356Z-250500</aem.sdk.api>
+        <aem.sdk.api>2026.7.27293.20260724T150618Z-260600</aem.sdk.api>
         <componentGroupName>WKND Site</componentGroupName>
         <core.wcm.components.version>2.29.0</core.wcm.components.version>
         <uber.jar.version>6.6.0</uber.jar.version>
         <wknd-shared.version>3.1.0</wknd-shared.version>
         <wknd-shared.65.version>2.2.2</wknd-shared.65.version>
-        <aemanalyser.version>1.6.6</aemanalyser.version>
-        <acs-aem-commons.version>6.3.0</acs-aem-commons.version>
+        <aemanalyser.version>1.7.2</aemanalyser.version>
+        <acs-aem-commons.version>6.17.2</acs-aem-commons.version>
     </properties>
 
     <organization>
@@ -802,6 +802,13 @@ Bundle-DocURL:
                 <artifactId>acs-aem-commons-models</artifactId>
                 <version>${acs-aem-commons.version}</version>
                 <scope>provided</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.adobe.acs</groupId>
+                <artifactId>acs-aem-commons-all</artifactId>
+                <classifier>cloud</classifier>
+                <version>${acs-aem-commons.version}</version>
+                <type>zip</type>
             </dependency>
 
             <!-- Testing -->
