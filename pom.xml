@@ -155,7 +155,7 @@
                                 <requireJavaVersion>
                                     <version>[21,22)</version>
                                     <message>Maven must be executed with Java 21.</message>
-                                </requireJavaVersion>                                
+                                </requireJavaVersion>
                             </rules>
                         </configuration>
                     </execution>
@@ -173,7 +173,7 @@
                             </rules>
                             <fail>true</fail>
                         </configuration>
-        </execution>                    
+        </execution>
                 </executions>
             </plugin>
             <!-- Maven Compiler Plugin -->
@@ -246,8 +246,7 @@ Bundle-Category: ${componentGroupName}
 -snapshot: SNAPSHOT
 
 Bundle-DocURL:
--plugin org.apache.sling.caconfig.bndplugin.ConfigurationClassScannerPlugin
--plugin org.apache.sling.bnd.models.ModelsScannerPlugin
+-plugin org.apache.sling.caconfig.bndplugin.ConfigurationClassScannerPlugin,org.apache.sling.bnd.models.ModelsScannerPlugin
                                 ]]></bnd>
                             </configuration>
                         </execution>
