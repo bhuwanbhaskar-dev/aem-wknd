@@ -16,12 +16,12 @@ The service user in this sample is scoped to the WKND content, DAM, experience-f
 
 ## Runtime flow
 
-1. The Author replication event handler accepts only `ACTIVATE` and `DEACTIVATE` events identified as originating from the `publish` agent.
+1. The Author SCD event handler accepts only `ADD` and `DELETE` package-distributed events identified as originating from the `publish` agent. It runs on the current Author cluster leader.
 2. For each event path, the handler resolves `wknd.previewSyncConfig` using the dedicated service user.
 3. An opted-in path is submitted to the durable Sling Job topic `com/adobe/aem/guides/wknd/preview-sync`.
-4. The job consumer uses the same service user and calls the Replication API with an `AgentFilter` that selects only `preview`.
+4. The job consumer uses the same service user and calls the Sling Content Distribution API against the `preview` agent.
 
-One job contains one path. This keeps jobs retryable and bounded. Large/deep trees must use Adobe's Tree Activation workflow step with `agentId=preview`; this handler is not a bulk-tree replication mechanism.
+One job contains one path. The queue is ordered and single-threaded to preserve publication order. This keeps jobs retryable and bounded. Large/deep trees must use Adobe's Tree Activation workflow step with `agentId=preview`; this handler is not a bulk-tree replication mechanism.
 
 ## Required deployment validation
 
@@ -32,4 +32,4 @@ One job contains one path. This keeps jobs retryable and bounded. Large/deep tre
 - Publish, verify the page in Preview, then deactivate and verify removal from Preview.
 - Inspect AEM logs and Tools > Deployment > Distribution for the Preview queue.
 
-The implementation uses at-least-once Sling Job execution, so the Preview operation must be treated as retryable. Adobe's Replication API documentation also notes that Preview-only status is read through the per-agent status rather than the overall activation flag.
+The implementation uses at-least-once Sling Job execution, so the Preview operation must be treated as retryable. Adobe's SCD guidance likewise describes at-least-once processing; production operations should monitor queue status and plan for eventual consistency.

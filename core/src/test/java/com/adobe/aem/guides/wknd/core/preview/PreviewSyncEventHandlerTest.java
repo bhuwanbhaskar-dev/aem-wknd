@@ -16,6 +16,10 @@ import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ResourceResolverFactory;
 import org.apache.sling.caconfig.ConfigurationBuilder;
+import org.apache.sling.discovery.DiscoveryService;
+import org.apache.sling.discovery.InstanceDescription;
+import org.apache.sling.discovery.TopologyView;
+import org.apache.sling.distribution.event.DistributionEventTopics;
 import org.apache.sling.event.jobs.Job;
 import org.apache.sling.event.jobs.JobManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -26,8 +30,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.osgi.service.event.Event;
-
-import com.day.cq.replication.ReplicationAction;
 
 @ExtendWith(MockitoExtension.class)
 class PreviewSyncEventHandlerTest {
@@ -53,17 +55,46 @@ class PreviewSyncEventHandlerTest {
     @Mock
     private Job job;
 
+    @Mock
+    private DiscoveryService discoveryService;
+
+    @Mock
+    private TopologyView topologyView;
+
+    @Mock
+    private InstanceDescription localInstance;
+
     @BeforeEach
     void setUp() throws LoginException {
         lenient().when(resourceResolverFactory.getServiceResourceResolver(any()))
                 .thenReturn(resolver);
+        // Default: local pod is leader and topology is current
+        lenient().when(discoveryService.getTopology()).thenReturn(topologyView);
+        lenient().when(topologyView.isCurrent()).thenReturn(true);
+        lenient().when(topologyView.getLocalInstance()).thenReturn(localInstance);
+        lenient().when(localInstance.isLeader()).thenReturn(true);
+        lenient().when(resource.getPath()).thenReturn("/content/wknd/us/en");
     }
 
     @Test
-    @DisplayName("Should ignore events triggered by own service user (loop prevention)")
-    void shouldIgnoreSelfTriggeredEvents() {
-        Event event = createReplicationEvent("/content/wknd/us/en", "ACTIVATE",
-                PreviewSyncConstants.PREVIEW_SYNC_PRINCIPAL);
+    @DisplayName("Should ignore events from non-publish SCD agents (loop prevention)")
+    void shouldIgnoreNonPublishAgentEvents() {
+        Event event = createDistributionEvent(PreviewSyncConstants.PREVIEW_AGENT_ID,
+                "ADD", "/content/wknd/us/en");
+
+        handler.handleEvent(event);
+
+        verifyNoInteractions(jobManager);
+    }
+
+    // ---- Leader Guard Tests -----------------------------------------------
+
+    @Test
+    @DisplayName("Should drop event when local pod is NOT the leader (non-leader Author pod)")
+    void shouldDropEventWhenNotLeader() {
+        when(localInstance.isLeader()).thenReturn(false);
+        Event event = createDistributionEvent(PreviewSyncConstants.PUBLISH_AGENT_ID,
+                "ADD", "/content/wknd/us/en");
 
         handler.handleEvent(event);
 
@@ -71,9 +102,11 @@ class PreviewSyncEventHandlerTest {
     }
 
     @Test
-    @DisplayName("Should ignore unsupported action types like TEST")
-    void shouldIgnoreUnsupportedActionTypes() {
-        Event event = createReplicationEvent("/content/wknd/us/en", "TEST", "admin");
+    @DisplayName("Should drop event when topology is not current (leader election in progress)")
+    void shouldDropEventWhenTopologyNotCurrent() {
+        when(topologyView.isCurrent()).thenReturn(false);
+        Event event = createDistributionEvent(PreviewSyncConstants.PUBLISH_AGENT_ID,
+                "ADD", "/content/wknd/us/en");
 
         handler.handleEvent(event);
 
@@ -81,10 +114,47 @@ class PreviewSyncEventHandlerTest {
     }
 
     @Test
-    @DisplayName("Should enqueue job when CAConfig enableAutoSync is true")
+    @DisplayName("Should drop event when topology view is null (Cloud Manager rolling restart)")
+    void shouldDropEventWhenTopologyIsNull() {
+        when(discoveryService.getTopology()).thenReturn(null);
+        Event event = createDistributionEvent(PreviewSyncConstants.PUBLISH_AGENT_ID,
+                "ADD", "/content/wknd/us/en");
+
+        handler.handleEvent(event);
+
+        verifyNoInteractions(jobManager);
+    }
+
+    @Test
+    @DisplayName("Should drop event when local instance is null")
+    void shouldDropEventWhenLocalInstanceIsNull() {
+        when(topologyView.getLocalInstance()).thenReturn(null);
+        Event event = createDistributionEvent(PreviewSyncConstants.PUBLISH_AGENT_ID,
+                "ADD", "/content/wknd/us/en");
+
+        handler.handleEvent(event);
+
+        verifyNoInteractions(jobManager);
+    }
+
+    // ---- Agent / Type Filter Tests ----------------------------------------
+
+    @Test
+    @DisplayName("Should ignore unsupported SCD distribution types")
+    void shouldIgnoreUnsupportedDistributionTypes() {
+        Event event = createDistributionEvent(PreviewSyncConstants.PUBLISH_AGENT_ID,
+                "PULL", "/content/wknd/us/en");
+
+        handler.handleEvent(event);
+
+        verifyNoInteractions(jobManager);
+    }
+
+    @Test
+    @DisplayName("Should enqueue job when CAConfig enableAutoSync is true (ADD)")
     void shouldEnqueueJobWhenEnabled() {
         String path = "/content/wknd/us/en";
-        Event event = createReplicationEvent(path, "ACTIVATE", "admin");
+        Event event = createDistributionEvent(PreviewSyncConstants.PUBLISH_AGENT_ID, "ADD", path);
 
         when(resolver.getResource(path)).thenReturn(resource);
         when(resource.adaptTo(ConfigurationBuilder.class)).thenReturn(configurationBuilder);
@@ -102,7 +172,7 @@ class PreviewSyncEventHandlerTest {
     @DisplayName("Should NOT enqueue job when CAConfig enableAutoSync is false")
     void shouldNotEnqueueJobWhenDisabled() {
         String path = "/content/wknd/us/en";
-        Event event = createReplicationEvent(path, "ACTIVATE", "admin");
+        Event event = createDistributionEvent(PreviewSyncConstants.PUBLISH_AGENT_ID, "ADD", path);
 
         when(resolver.getResource(path)).thenReturn(resource);
         when(resource.adaptTo(ConfigurationBuilder.class)).thenReturn(configurationBuilder);
@@ -116,11 +186,11 @@ class PreviewSyncEventHandlerTest {
     }
 
     @Test
-    @DisplayName("Should walk ancestors on DEACTIVATE when resource is deleted")
-    void shouldWalkAncestorsOnDeactivateDeletedResource() {
+    @DisplayName("Should walk ancestors on DELETE when resource is already removed")
+    void shouldWalkAncestorsOnDeleteForRemovedResource() {
         String deletedPath = "/content/wknd/us/en/article-1";
         String parentPath = "/content/wknd/us/en";
-        Event event = createReplicationEvent(deletedPath, "DEACTIVATE", "admin");
+        Event event = createDistributionEvent(PreviewSyncConstants.PUBLISH_AGENT_ID, "DELETE", deletedPath);
 
         when(resolver.getResource(deletedPath)).thenReturn(null);
         when(resolver.getResource(parentPath)).thenReturn(resource);
@@ -136,10 +206,10 @@ class PreviewSyncEventHandlerTest {
     }
 
     @Test
-    @DisplayName("Should NOT walk ancestors on ACTIVATE when resource is null")
-    void shouldNotWalkAncestorsOnActivateNullResource() {
+    @DisplayName("Should NOT walk ancestors on ADD when resource is null")
+    void shouldNotWalkAncestorsOnAddNullResource() {
         String path = "/content/wknd/us/en/missing";
-        Event event = createReplicationEvent(path, "ACTIVATE", "admin");
+        Event event = createDistributionEvent(PreviewSyncConstants.PUBLISH_AGENT_ID, "ADD", path);
 
         when(resolver.getResource(path)).thenReturn(null);
 
@@ -149,10 +219,10 @@ class PreviewSyncEventHandlerTest {
     }
 
     @Test
-    @DisplayName("Should process events with empty userId (AEMaaCS SCD scenario)")
-    void shouldProcessEventsWithEmptyUserId() {
+    @DisplayName("Should enqueue job for DEACTIVATE (DELETE) when opted-in")
+    void shouldEnqueueJobOnDelete() {
         String path = "/content/wknd/us/en";
-        Event event = createReplicationEvent(path, "ACTIVATE", "");
+        Event event = createDistributionEvent(PreviewSyncConstants.PUBLISH_AGENT_ID, "DELETE", path);
 
         when(resolver.getResource(path)).thenReturn(resource);
         when(resource.adaptTo(ConfigurationBuilder.class)).thenReturn(configurationBuilder);
@@ -171,7 +241,8 @@ class PreviewSyncEventHandlerTest {
     void shouldHandleLoginException() throws LoginException {
         when(resourceResolverFactory.getServiceResourceResolver(any()))
                 .thenThrow(new LoginException("test"));
-        Event event = createReplicationEvent("/content/wknd/us/en", "ACTIVATE", "admin");
+        Event event = createDistributionEvent(PreviewSyncConstants.PUBLISH_AGENT_ID,
+                "ADD", "/content/wknd/us/en");
 
         handler.handleEvent(event);
 
@@ -179,16 +250,13 @@ class PreviewSyncEventHandlerTest {
     }
 
     /**
-     * Helper to create a simulated ReplicationAction OSGi event.
+     * Helper to create a simulated SCD AGENT_PACKAGE_DISTRIBUTED OSGi event.
      */
-    private Event createReplicationEvent(String path, String actionType, String userId) {
+    private Event createDistributionEvent(String agentName, String distType, String... paths) {
         Map<String, Object> props = new HashMap<>();
-        props.put("paths", new String[] { path });
-        props.put("type", actionType);
-        if (userId != null) {
-            props.put("userId", userId);
-        }
-        props.put("modificationDate", System.currentTimeMillis());
-        return new Event(ReplicationAction.EVENT_TOPIC, props);
+        props.put("distribution.component.name", agentName);
+        props.put("distribution.type", distType);
+        props.put("distribution.paths", paths);
+        return new Event(DistributionEventTopics.AGENT_PACKAGE_DISTRIBUTED, props);
     }
 }
