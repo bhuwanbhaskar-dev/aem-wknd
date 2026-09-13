@@ -89,9 +89,24 @@ Import-Package: javax.annotation;version=0.0.0,*
             <artifactId>acs-aem-commons-bundle</artifactId>
             <scope>provided</scope>
         </dependency>
+        <!-- Gson: used by PackageAnalyzerServiceImpl for JSON report assembly.
+             Scoped 'provided' because the AEM SDK uber-jar ships Gson at runtime. -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.10.1</version>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>uk.org.lidalia</groupId>
             <artifactId>slf4j-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Match the native filter API used by the SDK; old AEM mocks pull FileVault 3.1.x. -->
+        <dependency>
+            <groupId>org.apache.jackrabbit.vault</groupId>
+            <artifactId>org.apache.jackrabbit.vault</artifactId>
+            <version>3.8.4</version>
             <scope>test</scope>
         </dependency>
         <!-- Testing -->
@@ -199,7 +214,7 @@ Import-Package: javax.annotation;version=0.0.0,*
 
             <dependencies>
                 <!--================
-                AEM 6.x Dependencies 
+                AEM 6.x Dependencies
                 ====================-->
                 <!-- Adobe AEM Dependencies -->
                 <dependency>
@@ -344,5 +359,5 @@ Import-Package: javax.annotation;version=0.0.0,*
                 </dependency>
             </dependencies>
         </profile>
-    </profiles>    
+    </profiles>
 </project>

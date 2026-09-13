@@ -98,6 +98,10 @@ Many of the images in the WKND Reference website are from Adobe Stock and are Th
 
 With Adobe Stock, you have access to more than 140 million high-quality, royalty-free images including photos, graphics, videos and templates to jumpstart your creative projects.
 
+## Package preflight
+
+The custom Author-only package preflight estimates content-package size from FileVault filters using background Sling Jobs. See the [architecture and usage guide](docs/package-analyzer-architecture-review.md) for operator access, POST/poll examples, transfer budgets, and estimation limits.
+
 ## Documentation
 
 * This project was generated using the [AEM Project Archetype](https://experienceleague.adobe.com/docs/experience-manager-core-components/using/developing/archetype/overview.html).

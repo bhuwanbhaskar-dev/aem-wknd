@@ -1,0 +1,19 @@
+{
+  "operatorGroup": "wknd-package-analyzer-users",
+  "allowedRoots": [
+    "/content/wknd",
+    "/content/dam/wknd",
+    "/content/experience-fragments/wknd",
+    "/conf/wknd"
+  ],
+  "maxNodes": 100000,
+  "maxProperties": 1000000,
+  "maxValues": 2000000,
+  "maxScanMillis": 120000,
+  "maxOutstandingJobs": 20,
+  "nodeAllowanceBytes": 4096,
+  "propertyAllowanceBytes": 512,
+  "archiveAllowanceBytes": 65536,
+  "transferTargetSeconds": 60,
+  "headroomFactor": 0.7
+}

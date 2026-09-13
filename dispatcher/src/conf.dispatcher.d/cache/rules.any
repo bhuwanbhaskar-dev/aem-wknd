@@ -5,3 +5,9 @@
 #
 
 $include "./default_rules.any"
+
+# Never cache an authenticated, permission-sensitive analysis response.
+/0010 {
+    /glob "/bin/api/analyze-package*"
+    /type "deny"
+}

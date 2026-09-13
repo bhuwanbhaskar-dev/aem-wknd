@@ -1,0 +1,5 @@
+{
+  "user.mapping": [
+    "aem-guides-wknd.core:package-preflight-reader=[wknd-package-preflight-reader-service]"
+  ]
+}
