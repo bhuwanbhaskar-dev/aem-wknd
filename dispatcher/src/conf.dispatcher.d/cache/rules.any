@@ -7,7 +7,8 @@
 $include "./default_rules.any"
 
 # Never cache an authenticated, permission-sensitive analysis response.
-/0010 {
+# Keep custom labels unique; /0010 is already used by the default dispatcher rules.
+/0013 {
     /glob "/bin/api/analyze-package*"
     /type "deny"
 }
