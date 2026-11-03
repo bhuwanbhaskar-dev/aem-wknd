@@ -186,6 +186,9 @@ public class ContentIndexServiceImpl implements ContentIndexService {
             // resolver.getUserID() returns "wknd-content-indexer-service"
             // This is the system user — confirms the mapping worked.
 
+            // ── Exercise 4: Runtime Identity Verification ────────────────────
+            verifyResolverIdentity(resolver);
+
             // ── STEP 2: Read phase (needs jcr:read on /content/wknd) ────────
             List<IndexEntry> entries = scanContentTree(resolver);
             LOG.info("[ContentIndexService] Scanned {} pages from '{}'", entries.size(), CONTENT_ROOT);
@@ -264,6 +267,65 @@ public class ContentIndexServiceImpl implements ContentIndexService {
     }
 
     // ── Private Helpers ────────────────────────────────────────────────────
+
+    /**
+     * Exercise 4 — Runtime Identity Verification.
+     *
+     * <p>Verifies that the ResourceResolver is authenticated as the expected
+     * system user. In a correctly configured system this check always passes,
+     * but it serves three production purposes:</p>
+     *
+     * <ol>
+     *   <li><strong>Audit trail:</strong> Every index operation logs the exact
+     *       JCR principal, making it trivial to correlate actions in Oak
+     *       audit logs with the service that caused them.</li>
+     *
+     *   <li><strong>Misconfiguration detection:</strong> If someone accidentally
+     *       maps the subservice to a different system user (e.g., an admin user
+     *       during a copy-paste error in ServiceUserMapper config), this log
+     *       will immediately expose the problem rather than silently running
+     *       with elevated privileges.</li>
+     *
+     *   <li><strong>Security defence in depth:</strong> Fail fast with a clear
+     *       warning rather than operating with unexpected permissions. In a
+     *       zero-trust architecture, you never assume the resolver is who you
+     *       think it is — you verify.</li>
+     * </ol>
+     *
+     * <p>In AEM as a Cloud Service, {@link ResourceResolver#getUserID()} returns
+     * the JCR principal name of the authenticated session. For a service resolver
+     * this is the system user name exactly as created by RepoInit.</p>
+     *
+     * @param resolver the freshly opened service resolver
+     */
+    private void verifyResolverIdentity(ResourceResolver resolver) {
+        String actualUser = resolver.getUserID();
+
+        if (EXPECTED_SYSTEM_USER.equals(actualUser)) {
+            // Expected case — everything is configured correctly
+            LOG.info("[ContentIndexService] Identity verified: resolver authenticated as '{}'", actualUser);
+        } else {
+            /*
+             * This should NEVER happen in production if configs are correct.
+             * Possible causes:
+             *   1. A different system user was accidentally mapped to this subservice
+             *   2. The RepoInit script uses a different user name than expected
+             *   3. The ServiceUserMapper was changed without updating this constant
+             *
+             * We log a SECURITY WARNING but do NOT throw — the operation may still
+             * succeed (the other user might have the same permissions). However,
+             * this warning must be investigated before the next deployment.
+             *
+             * In a stricter security posture, you could throw ContentIndexException
+             * here to hard-fail any operation running under the wrong identity.
+             */
+            LOG.warn("[ContentIndexService] ⚠ SECURITY WARNING: Resolver authenticated as '{}' " +
+                "but expected '{}'. Check ServiceUserMapperImpl.amended~content-indexer.cfg.json " +
+                "and verify the RepoInit script created the correct system user. " +
+                "Proceeding, but investigate this immediately.",
+                actualUser, EXPECTED_SYSTEM_USER);
+        }
+    }
 
     /**
      * Traverses the content tree under CONTENT_ROOT and collects

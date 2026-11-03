@@ -45,6 +45,16 @@ public interface ContentIndexService {
     String SUBSERVICE_NAME = "content-indexer";
 
     /**
+     * The expected JCR principal name of the system user that backs this
+     * subservice. Used for runtime identity verification — if the resolver
+     * opens as a different principal, a security warning is logged.
+     *
+     * This value must match the RepoInit script:
+     *   create service user wknd-content-indexer-service with path system/cq:services/wknd
+     */
+    String EXPECTED_SYSTEM_USER = "wknd-content-indexer-service";
+
+    /**
      * The root path scanned for content pages.
      */
     String CONTENT_ROOT = "/content/wknd/us/en";

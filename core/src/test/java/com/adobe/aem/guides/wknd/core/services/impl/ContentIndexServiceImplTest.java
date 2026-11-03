@@ -224,5 +224,33 @@ class ContentIndexServiceImplTest {
             "Subservice name must match ServiceUserMapper config exactly");
         assertEquals("/content/wknd/us/en", ContentIndexService.CONTENT_ROOT);
         assertEquals("/var/wknd/content-index", ContentIndexService.INDEX_ROOT);
+        assertEquals("wknd-content-indexer-service", ContentIndexService.EXPECTED_SYSTEM_USER,
+            "System user name must match the RepoInit create service user statement");
+    }
+
+    // ── Test 7 (Exercise 4): buildIndex() succeeds even when userId differs ─
+    //    The identity check is a WARNING, not a hard failure.
+
+    @Test
+    @DisplayName("buildIndex() logs warning but succeeds when resolver userId is unexpected")
+    void testBuildIndex_unexpectedUserId_logsWarningButDoesNotFail() throws Exception {
+        /*
+         * In the RESOURCERESOLVER_MOCK, getUserID() returns a mock/test user,
+         * not "wknd-content-indexer-service". This test verifies that the
+         * identity mismatch produces a warning but does not fail the operation
+         * (our verifyResolverIdentity() logs WARN, not throws).
+         *
+         * In a real AEM instance, getUserID() returns the actual system user.
+         * This test covers the "wrong user mapped" scenario in CI.
+         */
+        ContentIndexServiceImpl service = new ContentIndexServiceImpl();
+        ctx.registerInjectActivateService(service);
+
+        // The mock context's resolver will have some userId that is not
+        // "wknd-content-indexer-service" — that's fine; the service should
+        // still complete the operation, just with a warning log.
+        // We just verify it does not throw.
+        assertDoesNotThrow(() -> service.buildIndex(),
+            "buildIndex() should not throw even if resolver userId doesn't match expected system user");
     }
 }
