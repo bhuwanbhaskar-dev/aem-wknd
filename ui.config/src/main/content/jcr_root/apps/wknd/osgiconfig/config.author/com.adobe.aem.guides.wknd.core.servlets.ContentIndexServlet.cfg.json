@@ -1,0 +1,4 @@
+{
+  "sling.servlet.paths": ["/bin/wknd/content-index"],
+  "sling.servlet.methods": ["GET", "POST"]
+}

@@ -1,0 +1,5 @@
+{
+  "user.mapping": [
+    "aem-guides-wknd.core:content-indexer=[wknd-content-indexer-service]"
+  ]
+}

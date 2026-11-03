@@ -1,0 +1,5 @@
+{
+  "scripts": [
+    "create service user wknd-content-indexer-service with path system/cq:services/wknd\nset principal ACL for wknd-content-indexer-service\n  allow jcr:read on /content/wknd\n  allow jcr:write,jcr:nodeTypeManagement,rep:addProperties,rep:alterProperties on /var/wknd/content-index\n  allow jcr:addChildNodes on /var/wknd\n  allow jcr:read on /var/wknd/content-index\nend"
+  ]
+}
